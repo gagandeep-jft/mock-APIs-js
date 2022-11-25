@@ -35,9 +35,11 @@ const generateEmpTag = (empName, empJob, empSalary, id) => {
 
   // event listener for edit button
   editBtn.addEventListener("click", () => {
-    api.get(id, (obj) =>
-      setInputField(obj.name, obj.job, obj.salary, obj.id, true)
-    );
+    api
+      .get(id)
+      .then((obj) =>
+        setInputField(obj.name, obj.job, obj.salary, obj.id, true)
+      );
   });
 
   let deleteBtn = document.createElement("button");
@@ -63,7 +65,7 @@ function addToTable(tag) {
 }
 
 // ==============  Submit Button Handler ==============
-document.getElementById("add-emp").addEventListener("click", () => {
+document.getElementById("add-emp").addEventListener("click", async () => {
   if (document.getElementById("add-emp").classList.contains("d-none")) {
     return;
   }
@@ -78,10 +80,9 @@ document.getElementById("add-emp").addEventListener("click", () => {
 
   let emp = new Employee(name, job, salary);
 
-  api.post(emp, (id) => {
-    addToTable(generateEmpTag(name, job, salary, id));
-    setInputField();
-  });
+  let id = await api.post(emp);
+  addToTable(generateEmpTag(name, job, salary, id));
+  setInputField();
 });
 
 // ============== get input field data ==============
@@ -131,7 +132,7 @@ function removeFromTable(id) {
 
 // ============== Update Button Handler ==============
 
-document.getElementById("update-emp").addEventListener("click", () => {
+document.getElementById("update-emp").addEventListener("click", async () => {
   if (document.getElementById("update-emp").classList.contains("d-none")) {
     return;
   }
@@ -145,18 +146,16 @@ document.getElementById("update-emp").addEventListener("click", () => {
 
   let emp = new Employee(name, job, salary, id);
 
-  api.put(emp, () => {
-    removeFromTable(id);
-    setInputField();
-    tbody.appendChild(generateEmpTag(name, job, salary, id));
-  });
+  await api.put(emp);
+  removeFromTable(id);
+  setInputField();
+  tbody.appendChild(generateEmpTag(name, job, salary, id));
 });
 
-function deleteEmp(id) {
-  api.delete(id, () => {
-    let tr = document.getElementById(id);
-    tbody.removeChild(tr);
-  });
+async function deleteEmp(id) {
+  await api.delete(id);
+  let tr = document.getElementById(id);
+  tbody.removeChild(tr);
 }
 
 // let emp = new Employee("Gagan", "SWE Trainee", "5LPA");

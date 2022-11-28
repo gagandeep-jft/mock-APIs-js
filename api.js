@@ -1,15 +1,23 @@
 const delay = 2000; // 2s
 
 function Employees() {
-  this.employees = [];
-  this.globalCounter = 0;
+  this.employees = localStorage.getItem("data")
+    ? JSON.parse(localStorage.getItem("data"))
+    : [];
+
+  this.globalCounter = this.employees.length + 1;
+
+  this.storeData = () => {
+    localStorage.setItem("data", JSON.stringify(this.employees));
+  };
 
   this.post = (emp) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        emp.id = this.globalCounter++;
+        emp.id = ++this.globalCounter;
         this.employees.push(emp);
-        resolve(emp.id);
+        resolve([emp, this.employees]);
+        this.storeData();
       }, delay);
     });
   };
@@ -25,7 +33,8 @@ function Employees() {
             break;
           }
         }
-        resolve();
+        resolve(this.employees);
+        this.storeData();
       }, delay);
     });
   };
@@ -44,7 +53,8 @@ function Employees() {
           this.employees.splice(index, 1);
           console.log("found and deleted employee");
         }
-        resolve(id);
+        resolve(this.employees);
+        this.storeData();
       }, delay);
     });
   };
@@ -60,7 +70,8 @@ function Employees() {
             break;
           }
         }
-        resolve(result);
+        resolve(result, this.employees);
+        this.storeData();
       }, delay);
     });
   };

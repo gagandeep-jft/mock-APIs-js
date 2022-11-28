@@ -1,5 +1,6 @@
 let tbody = document.querySelector("tbody");
 let api = new Employees();
+let data = []; // for storing employee data
 
 class Employee {
   constructor(empName, empJob, empSalary, id) {
@@ -10,66 +11,76 @@ class Employee {
   }
 }
 
-// ==============  Employee Record Tag Generation ==============
-const generateEmpTag = (empName, empJob, empSalary, id) => {
-  let tr = document.createElement("tr");
-  tr.id = id;
-  let name = document.createElement("td");
-  name.innerHTML = empName;
-
-  let job = document.createElement("td");
-  job.innerHTML = empJob;
-
-  let salary = document.createElement("td");
-  salary.innerHTML = empSalary;
-
-  tr.appendChild(name);
-  tr.appendChild(job);
-  tr.appendChild(salary);
-
-  let buttons = document.createElement("td");
-  let editBtn = document.createElement("button");
-  editBtn.className = "edit-btn btn btn-primary mx-2";
-  editBtn.innerHTML = "Edit";
-  editBtn.id = `edit-btn-${id}`;
-
-  // event listener for edit button
-  editBtn.addEventListener("click", () => {
-    api
-      .get(id)
-      .then((obj) =>
-        setInputField(obj.name, obj.job, obj.salary, obj.id, true)
-      );
+const populate = (data) => {
+  $("tbody").innerHTML = "";
+  data.forEach((emp) => {
+    generateEmpTag(emp);
   });
-
-  let deleteBtn = document.createElement("button");
-  deleteBtn.className = "delete-btn btn btn-danger";
-  deleteBtn.innerHTML = "Delete";
-  deleteBtn.id = `delete-btn-${id}`;
-
-  deleteBtn.addEventListener("click", () => {
-    deleteEmp(id);
-  });
-
-  buttons.appendChild(editBtn);
-  buttons.appendChild(deleteBtn);
-
-  tr.appendChild(buttons);
-
-  return tr;
 };
 
-//  ============== Render Employee ==============
-function addToTable(tag) {
-  tbody.appendChild(tag);
+$(document).ready(() => {
+  data = localStorage.getItem("data");
+  if (data) {
+    // console.log(data);
+    populate(JSON.parse(data));
+  } else {
+    // get data from the server
+  }
+});
+
+function sync() {
+  // TODO
 }
 
+// ==============  Employee Record Tag Generation ==============
+const generateEmpTag = (emp) => {
+  let tr = $(`<tr id="${emp.id}">
+    <td>${emp.name}</td>
+    <td>${emp.job}</td>
+    <td>${emp.salary}</td>
+    <td>
+      <button
+        class="edit-btn btn btn-primary mx-2"
+        id="edit-btn-${emp.id}">
+        Edit
+      </button>
+      
+      <button
+        class="delete-btn btn btn-danger"
+        id="delete-btn-${emp.id}">
+        Delete
+      </button>
+    </td>
+  </tr>`);
+
+  $("tbody").append(tr);
+
+  // event listener for edit button
+  $(`#edit-btn-${emp.id}`).click(() => {
+    api.get(emp.id).then(
+      (obj, empData) => {
+        setInputField(obj.name, obj.job, obj.salary, obj.id, true);
+        data = empData;
+      },
+      () => {
+        alert("[Error] GET request failed!");
+      }
+    );
+  });
+
+  $(`#delete-btn-${emp.id}`).click(() => {
+    deleteEmp(emp.id);
+  });
+};
+
 // ==============  Submit Button Handler ==============
-document.getElementById("add-emp").addEventListener("click", async () => {
-  if (document.getElementById("add-emp").classList.contains("d-none")) {
+$("#add-emp").click(async () => {
+  if ($("#add-emp").hasClass("d-none")) {
+    $("#update-emp").click();
     return;
   }
   let [name, job, salary, ,] = getInputField();
+  let emp = null;
 
   console.log(name, job, salary);
 
@@ -78,62 +89,53 @@ document.getElementById("add-emp").addEventListener("click", async () => {
     return;
   }
 
-  let emp = new Employee(name, job, salary);
-
-  let id = await api.post(emp);
-  addToTable(generateEmpTag(name, job, salary, id));
+  [emp, data] = await api.post(new Employee(name, job, salary));
+  generateEmpTag(emp);
   setInputField();
 });
 
 // ============== get input field data ==============
 function getInputField() {
-  let name = document.getElementById("name").value;
-  let job = document.getElementById("job").value;
-  let salary = document.getElementById("salary").value;
-  let id = document.getElementById("empID").value;
-  return [name, job, salary, id];
+  return [
+    $("#name").val(),
+    $("#job").val(),
+    $("#salary").val(),
+    $("#empID").val(),
+  ];
 }
 
 // ============== set input field data ==============
-function setInputField(name, job, salary, id, updateEmp) {
-  document.getElementById("name").value = name ?? "";
-  document.getElementById("job").value = job ?? "";
-  document.getElementById("salary").value = salary ?? "";
+function setInputField(name, job, salary, id, isUpdate) {
+  $("#name").val(name ?? "");
+  $("#job").val(job ?? "");
+  $("#salary").val(salary ?? "");
 
-  document.getElementById("empID").value = id ?? "";
-  //   console.log(id);
+  $("#empID").val(id ?? "");
 
-  let submitBtn = document.getElementById("add-emp");
-  let updateBtn = document.getElementById("update-emp");
+  let submitBtn = $("#add-emp");
+  let updateBtn = $("#update-emp");
 
-  if (updateEmp) {
-    submitBtn.classList.add("d-none");
-    updateBtn.classList.remove("d-none");
+  if (isUpdate) {
+    submitBtn.addClass("d-none");
+    updateBtn.removeClass("d-none");
   } else {
-    if (submitBtn.classList.contains("d-none")) {
-      submitBtn.classList.remove("d-none");
+    if (submitBtn.hasClass("d-none")) {
+      submitBtn.removeClass("d-none");
     }
-    if (!updateBtn.classList.contains("d-none")) {
-      updateBtn.classList.add("d-none");
+    if (!updateBtn.hasClass("d-none")) {
+      updateBtn.addClass("d-none");
     }
   }
 }
 
 function removeFromTable(id) {
-  let tags = [...tbody.children];
-  for (let i = 0; i < tags.length; i++) {
-    if (tags[i].id == id) {
-      console.log("found and removed");
-      tbody.removeChild(tags[i]);
-      break;
-    }
-  }
+  $(`#${id}`).remove();
 }
 
 // ============== Update Button Handler ==============
 
-document.getElementById("update-emp").addEventListener("click", async () => {
-  if (document.getElementById("update-emp").classList.contains("d-none")) {
+$("#update-emp").click(async () => {
+  if ($("#update-emp").hasClass("d-none")) {
     return;
   }
 
@@ -146,26 +148,13 @@ document.getElementById("update-emp").addEventListener("click", async () => {
 
   let emp = new Employee(name, job, salary, id);
 
-  await api.put(emp);
+  data = await api.put(emp);
   removeFromTable(id);
   setInputField();
-  tbody.appendChild(generateEmpTag(name, job, salary, id));
+  generateEmpTag(emp);
 });
 
 async function deleteEmp(id) {
-  await api.delete(id);
-  let tr = document.getElementById(id);
-  tbody.removeChild(tr);
+  data = await api.delete(id);
+  $(`#${id}`).remove();
 }
-
-// let emp = new Employee("Gagan", "SWE Trainee", "5LPA");
-// emp.add();
-
-// let emp2 = new Employee("Vishal", "SWE Trainee", "5LPA");
-// emp2.add();
-
-// let emp3 = new Employee("Khusboo", "SWE Trainee", "5LPA");
-// emp3.add();
-
-// let emp4 = new Employee("Haren", "SWE Trainee", "5LPA");
-// emp4.add();

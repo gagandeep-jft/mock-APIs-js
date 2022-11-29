@@ -1,78 +1,67 @@
-const delay = 2000; // 2s
+const API_URL = "http://localhost:3000/data";
 
-function Employees() {
-  this.employees = localStorage.getItem("data")
-    ? JSON.parse(localStorage.getItem("data"))
-    : [];
-
-  this.globalCounter = this.employees.length + 1;
-
-  this.storeData = () => {
-    localStorage.setItem("data", JSON.stringify(this.employees));
+function EmployeesAPI() {
+  this.saveLocalData = (data) => {
+    if (data) localStorage.setItem("data", JSON.stringify(data));
   };
 
-  this.post = (emp) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        emp.id = ++this.globalCounter;
-        this.employees.push(emp);
-        resolve([emp, this.employees]);
-        this.storeData();
-      }, delay);
+  this.getLocalData = () => {
+    return localStorage.getItem("data")
+      ? JSON.parse(localStorage.getItem("data"))
+      : [];
+  };
+
+  this.post = (emp, callback) => {
+    $.post(
+      API_URL,
+      emp,
+      (emp) => {
+        console.log(emp);
+        callback(emp);
+        this.sync();
+      },
+      "json"
+    );
+  };
+
+  this.put = (emp, callback) => {
+    $.ajax({
+      url: `${API_URL}/${emp.id}`,
+      type: "PUT",
+      data: emp,
+      success: (response) => {
+        callback(response);
+        this.sync();
+      },
     });
   };
 
-  this.put = (emp) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        for (let i = 0; i < this.employees.length; i++) {
-          // console.log(this.employees[i].id, emp.id);
-          if (this.employees[i].id == emp.id) {
-            this.employees[i] = emp;
-            console.log("found and replaced");
-            break;
-          }
-        }
-        resolve(this.employees);
-        this.storeData();
-      }, delay);
+  this.delete = (id, callback) => {
+    console.log(id);
+    $.ajax({
+      url: `${API_URL}/${id}`,
+      type: "DELETE",
+      success: (result) => {
+        callback();
+        this.sync();
+      },
+      error: () => {
+        callback();
+        this.sync();
+      },
     });
   };
 
-  this.delete = (id) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let index = -1;
-        for (let i = 0; i < this.employees.length; i++) {
-          if (this.employees[i].id == id) {
-            index = i;
-            break;
-          }
-        }
-        if (index != -1) {
-          this.employees.splice(index, 1);
-          console.log("found and deleted employee");
-        }
-        resolve(this.employees);
-        this.storeData();
-      }, delay);
+  this.get = (id, callback) => {
+    $.getJSON(`${API_URL}/${id}`, (result) => {
+      callback(result);
+      this.sync();
     });
   };
-
-  this.get = (id) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let result;
-
-        for (let i = 0; i < this.employees.length; i++) {
-          if (id == this.employees[i].id) {
-            result = this.employees[i];
-            break;
-          }
-        }
-        resolve(result, this.employees);
-        this.storeData();
-      }, delay);
+  this.sync = (callback) => {
+    $.getJSON(API_URL, {}, (result) => {
+      if (callback) callback(result);
+      this.saveLocalData(result);
     });
   };
 }

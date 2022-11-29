@@ -1,6 +1,14 @@
 let tbody = document.querySelector("tbody");
-let api = new Employees();
-let data = []; // for storing employee data
+let api = new EmployeesAPI();
+/*
+  TODO:
+
+- [x] GET All Employee Data
+- [ ] POST Employee info
+- [ ] GET Employee Data and Populate HTML
+- [ ] PUT Employee info
+- [ ] DELETE Employee info
+*/
 
 class Employee {
   constructor(empName, empJob, empSalary, id) {
@@ -11,29 +19,41 @@ class Employee {
   }
 }
 
-const populate = (data) => {
+const populate = (newData) => {
   $("tbody").innerHTML = "";
-  data.forEach((emp) => {
-    generateEmpTag(emp);
+  console.log(newData);
+  newData.forEach((emp) => {
+    // check if element already exists,
+    // if not, then add
+    // else, remove them
+    if ($(`#${emp.id}`).length === 0) {
+      generateEmpTag(emp);
+    } else if ($(`#${emp.id}`).length === 1) {
+      return;
+    } else {
+      $(`#${emp.id}`).remove();
+    }
   });
 };
 
 $(document).ready(() => {
-  data = localStorage.getItem("data");
-  if (data) {
-    // console.log(data);
-    populate(JSON.parse(data));
-  } else {
-    // get data from the server
-  }
-});
+  data =  api.getLocalData();
+  populate(data);
 
-function sync() {
-  // TODO
-}
+  api.sync((result) => {
+    populate(result);
+  });
+
+  // setInterval(() => {
+  //   api.sync((result) => {
+  //     populate(result, data);
+  //   });
+  // }, 30000);
+});
 
 // ==============  Employee Record Tag Generation ==============
 const generateEmpTag = (emp) => {
+  console.log(emp)
   let tr = $(`<tr id="${emp.id}">
     <td>${emp.name}</td>
     <td>${emp.job}</td>
@@ -57,41 +77,41 @@ const generateEmpTag = (emp) => {
 
   // event listener for edit button
   $(`#edit-btn-${emp.id}`).click(() => {
-    api.get(emp.id).then(
-      (obj, empData) => {
-        setInputField(obj.name, obj.job, obj.salary, obj.id, true);
-        data = empData;
-      },
-      () => {
-        alert("[Error] GET request failed!");
-      }
-    );
+    console.log(emp);
+    api.get(emp.id, (obj) => {
+      setInputField(obj.name, obj.job, obj.salary, obj.id, true);
+    });
   });
 
   $(`#delete-btn-${emp.id}`).click(() => {
-    deleteEmp(emp.id);
+    console.log(emp.id);
+    api.delete(emp.id, () => {
+      $(`#${emp.id}`).remove();
+    });
   });
 };
 
 // ==============  Submit Button Handler ==============
-$("#add-emp").click(async () => {
+$("#add-emp").click((e) => {
   if ($("#add-emp").hasClass("d-none")) {
     $("#update-emp").click();
     return;
   }
-  let [name, job, salary, ,] = getInputField();
-  let emp = null;
+  let emp = new Employee(...getInputField());
 
-  console.log(name, job, salary);
+  console.log(emp.name, emp.job, emp.salary);
 
-  if (!(name && job && salary)) {
+  if (!(emp.name && emp.job && emp.salary)) {
     alert("Missing field!");
     return;
   }
 
-  [emp, data] = await api.post(new Employee(name, job, salary));
-  generateEmpTag(emp);
-  setInputField();
+  api.post(emp, (emp) => {
+    // console.log(emp);
+    generateEmpTag(emp);
+    setInputField();
+    e.preventDefault();
+  });
 });
 
 // ============== get input field data ==============
@@ -128,33 +148,24 @@ function setInputField(name, job, salary, id, isUpdate) {
   }
 }
 
-function removeFromTable(id) {
-  $(`#${id}`).remove();
-}
-
 // ============== Update Button Handler ==============
 
-$("#update-emp").click(async () => {
+$("#update-emp").click(() => {
   if ($("#update-emp").hasClass("d-none")) {
     return;
   }
 
-  let [name, job, salary, id] = getInputField();
+  let emp = new Employee(...getInputField());
 
-  if (!(name && job && salary)) {
+  if (!(emp.name && emp.job && emp.salary)) {
     alert("Missing field!");
     return;
   }
 
-  let emp = new Employee(name, job, salary, id);
-
-  data = await api.put(emp);
-  removeFromTable(id);
-  setInputField();
-  generateEmpTag(emp);
+  api.put(emp, (emp) => {
+    // console.log(emp.id, "is removed!");
+    $(`#${emp.id}`).remove();
+    setInputField();
+    generateEmpTag(emp);
+  });
 });
-
-async function deleteEmp(id) {
-  data = await api.delete(id);
-  $(`#${id}`).remove();
-}

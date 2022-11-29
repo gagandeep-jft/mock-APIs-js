@@ -11,59 +11,42 @@ function EmployeesAPI() {
       : [];
   };
 
-  this.post = (emp, callback) => {
-    $.post(
+  this.post = (emp) => {
+    return $.post(
       API_URL,
       emp,
       (emp) => {
-        console.log(emp);
-        callback(emp);
         this.sync();
       },
       "json"
     );
   };
 
-  this.put = (emp, callback) => {
-    $.ajax({
+  this.put = (emp) => {
+    return $.ajax({
       url: `${API_URL}/${emp.id}`,
       type: "PUT",
       data: emp,
-      success: (response) => {
-        callback(response);
-        this.sync();
-      },
-      error: (error) => {
-        alert("ERROR", error);
-      }
+      success: this.sync,
     });
   };
 
-  this.delete = (id, callback) => {
-    console.log(id);
-    $.ajax({
+  this.delete = (id) => {
+    return $.ajax({
       url: `${API_URL}/${id}`,
       type: "DELETE",
-      success: (result) => {
-        callback();
-        this.sync();
-      },
-      error: () => {
-        callback();
-        this.sync();
-      },
+      success: this.sync,
+      error: this.sync,
     });
   };
 
-  this.get = (id, callback) => {
-    $.getJSON(`${API_URL}/${id}`, (result) => {
-      callback(result);
-      this.sync();
-    });
+  this.get = (id) => {
+    return $.getJSON(`${API_URL}/${id}`, {}, this.sync);
   };
-  this.sync = (callback) => {
-    $.getJSON(API_URL, {}, (result) => {
-      if (callback) callback(result);
+  this.sync = () => {
+    return $.getJSON(API_URL, {}, (result) => {
+      if (result);
+      console.log("updated")
       this.saveLocalData(result);
     });
   };

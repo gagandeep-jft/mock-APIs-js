@@ -65,10 +65,8 @@ const populate = (newData) => {
   });
 };
 
-function refreshTables() {
-  api.sync((result) => {
-    populate(result);
-  });
+async function refreshTables() {
+  populate(await api.sync());
 }
 
 $(document).ready(() => {
@@ -107,24 +105,20 @@ const generateEmpTag = (emp) => {
   $("tbody").append(tr);
 
   // event listener for edit button
-  $(`#edit-btn-${emp.id}`).click(() => {
-    console.log(emp);
-    api.get(emp.id, (obj) => {
-      setInputField(obj.name, obj.job, obj.salary, obj.id, true);
-    });
+  $(`#edit-btn-${emp.id}`).click(async () => {
+    let obj = await api.get(emp.id);
+    setInputField(obj.name, obj.job, obj.salary, obj.id, true);
   });
 
-  $(`#delete-btn-${emp.id}`).click(() => {
-    console.log(emp.id);
-    api.delete(emp.id, () => {
-      $(`#${emp.id}`).remove();
-      refreshTables();
-    });
+  $(`#delete-btn-${emp.id}`).click(async () => {
+    await api.delete(emp.id);
+    $(`#${emp.id}`).remove();
+    refreshTables();
   });
 };
 
 // ==============  Submit Button Handler ==============
-$("#add-emp").click((e) => {
+$("#add-emp").click(async (e) => {
   if ($("#add-emp").hasClass("d-none")) {
     $("#update-emp").click();
     return;
@@ -138,12 +132,10 @@ $("#add-emp").click((e) => {
     return;
   }
 
-  api.post(emp, (emp) => {
-    // console.log(emp);
-    setInputField();
-    e.preventDefault();
-    refreshTables();
-  });
+  emp = await api.post(emp);
+  // console.log(emp);
+  setInputField();
+  refreshTables();
 });
 
 // ============== get input field data ==============
@@ -182,7 +174,7 @@ function setInputField(name, job, salary, id, isUpdate) {
 
 // ============== Update Button Handler ==============
 
-$("#update-emp").click(() => {
+$("#update-emp").click(async () => {
   if ($("#update-emp").hasClass("d-none")) {
     return;
   }
@@ -194,12 +186,11 @@ $("#update-emp").click(() => {
     return;
   }
 
-  api.put(emp, (emp) => {
-    // console.log(emp.id, "is removed!");
-    $(`#${emp.id}`).remove();
-    setInputField();
-    refreshTables();
-  });
+  emp = await api.put(emp);
+  // console.log(emp.id, "is removed!");
+  $(`#${emp.id}`).remove();
+  setInputField();
+  refreshTables();
 });
 
 $(".btn-sort").click(function () {

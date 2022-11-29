@@ -1,13 +1,37 @@
 let tbody = document.querySelector("tbody");
 let api = new EmployeesAPI();
+
+// for sorting rows
+let sortKey = "id";
+let isAscOrder = true;
+
+let mapSortFunc = {
+  name: (obj, obj2) => {
+    return getSortKey(obj.name.toLowerCase(), obj2.name.toLowerCase());
+  },
+  job: (obj, obj2) => {
+    return getSortKey(obj.job.toLowerCase(), obj2.job.toLowerCase());
+  },
+  salary: (obj, obj2) => {
+    return getSortKey(parseInt(obj.salary), parseInt(obj2.salary));
+  },
+  id: (obj, obj2) => {
+    return getSortKey(parseInt(obj.id), parseInt(obj2.id));
+  }, // default
+};
+
 /*
   TODO:
-
 - [x] GET All Employee Data
-- [ ] POST Employee info
-- [ ] GET Employee Data and Populate HTML
-- [ ] PUT Employee info
-- [ ] DELETE Employee info
+- [x] POST Employee info
+- [x] GET Employee Data and Populate HTML
+- [x] PUT Employee info
+- [x] DELETE Employee info
+- [x] Sort Rows on basis of:
+  - [x] id
+  - [x] name
+  - [x] job
+  - [x] salary
 */
 
 class Employee {
@@ -19,41 +43,62 @@ class Employee {
   }
 }
 
+const getSortKey = (ele1, ele2) => {
+  if (ele1 < ele2) return -1;
+  else if (ele1 > ele2) return 1;
+  return 0;
+};
+
+const selectedFields = (a, b) => {
+  if (isAscOrder) return mapSortFunc[sortKey](a, b);
+  return mapSortFunc[sortKey](b, a);
+};
+
 const populate = (newData) => {
+  if (!newData) {
+    newData = api.getLocalData();
+  }
+
   $("tbody").innerHTML = "";
-  console.log(newData);
+  // console.log(newData);
+
+  newData.sort(selectedFields);
+  // console.log(newData);
+
   newData.forEach((emp) => {
     // check if element already exists,
     // if not, then add
     // else, remove them
-    if ($(`#${emp.id}`).length === 0) {
+    if ($(`#${emp.id}`).length <= 1) {
+      $(`#${emp.id}`).remove();
+      $(`#${emp.id}`).remove();
       generateEmpTag(emp);
-    } else if ($(`#${emp.id}`).length === 1) {
-      return;
     } else {
       $(`#${emp.id}`).remove();
     }
   });
 };
 
-$(document).ready(() => {
-  data =  api.getLocalData();
-  populate(data);
-
+function refreshTables() {
   api.sync((result) => {
     populate(result);
   });
+}
+
+$(document).ready(() => {
+  data = api.getLocalData();
+  populate(data);
+
+  refreshTables();
 
   setInterval(() => {
-    api.sync((result) => {
-      populate(result);
-    });
+    refreshTables();
   }, 30000);
 });
 
 // ==============  Employee Record Tag Generation ==============
 const generateEmpTag = (emp) => {
-  console.log(emp)
+  // console.log(emp)
   let tr = $(`<tr id="${emp.id}">
     <td>${emp.name}</td>
     <td>${emp.job}</td>
@@ -87,6 +132,7 @@ const generateEmpTag = (emp) => {
     console.log(emp.id);
     api.delete(emp.id, () => {
       $(`#${emp.id}`).remove();
+      refreshTables();
     });
   });
 };
@@ -108,9 +154,9 @@ $("#add-emp").click((e) => {
 
   api.post(emp, (emp) => {
     // console.log(emp);
-    generateEmpTag(emp);
     setInputField();
     e.preventDefault();
+    refreshTables();
   });
 });
 
@@ -166,6 +212,15 @@ $("#update-emp").click(() => {
     // console.log(emp.id, "is removed!");
     $(`#${emp.id}`).remove();
     setInputField();
-    generateEmpTag(emp);
+    refreshTables();
   });
+});
+
+$(".btn-sort").click(function () {
+  sortKey = $(this).attr("name");
+  isAscOrder = $(this).val() == "asc";
+  $(".btn-sort").removeClass("btn-success");
+  $(this).addClass("btn-success");
+  $(this).removeClass("btn-dark");
+  refreshTables();
 });

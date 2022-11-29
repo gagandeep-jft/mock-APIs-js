@@ -44,11 +44,11 @@ $(document).ready(() => {
     populate(result);
   });
 
-  // setInterval(() => {
-  //   api.sync((result) => {
-  //     populate(result, data);
-  //   });
-  // }, 30000);
+  setInterval(() => {
+    api.sync((result) => {
+      populate(result);
+    });
+  }, 30000);
 });
 
 // ==============  Employee Record Tag Generation ==============

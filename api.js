@@ -33,6 +33,9 @@ function EmployeesAPI() {
         callback(response);
         this.sync();
       },
+      error: (error) => {
+        alert("ERROR", error);
+      }
     });
   };
 

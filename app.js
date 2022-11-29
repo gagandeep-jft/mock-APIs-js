@@ -20,20 +20,6 @@ let mapSortFunc = {
   }, // default
 };
 
-/*
-  TODO:
-- [x] GET All Employee Data
-- [x] POST Employee info
-- [x] GET Employee Data and Populate HTML
-- [x] PUT Employee info
-- [x] DELETE Employee info
-- [x] Sort Rows on basis of:
-  - [x] id
-  - [x] name
-  - [x] job
-  - [x] salary
-*/
-
 class Employee {
   constructor(empName, empJob, empSalary, id) {
     this.name = empName;
@@ -217,9 +203,18 @@ $("#update-emp").click(() => {
 });
 
 $(".btn-sort").click(function () {
+  if ($(this).hasClass("btn-success")) {
+    $(this).removeClass("btn-success");
+    $(this).addClass("btn-dark");
+    sortKey = "id";
+    isAscOrder = "asc";
+    refreshTables();
+    return;
+  }
   sortKey = $(this).attr("name");
   isAscOrder = $(this).val() == "asc";
   $(".btn-sort").removeClass("btn-success");
+  $(".btn-sort").addClass("btn-dark");
   $(this).addClass("btn-success");
   $(this).removeClass("btn-dark");
   refreshTables();

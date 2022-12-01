@@ -5,6 +5,9 @@ let api = new EmployeesAPI();
 let sortKey = "id";
 let isAscOrder = true;
 
+// for search
+let searchResult = [];
+
 let mapSortFunc = {
   name: (obj, obj2) => {
     return getSortKey(obj.name.toLowerCase(), obj2.name.toLowerCase());
@@ -26,6 +29,23 @@ class Employee {
     this.job = empJob;
     this.salary = empSalary;
     this.id = id;
+    this.equals = (other) => {
+      console.log(this, other);
+      for (let key in this) {
+        if (["id", "equals", "toObj"].includes(key)) {
+          continue;
+        }
+        if (this[key] != other[key]) {
+          // console.log(this[key])
+          // console.log(other[key]);
+          return false;
+        }
+      }
+      return true;
+    };
+    this.toObj = () => {
+      return JSON.parse(JSON.stringify(this));
+    };
   }
 }
 
@@ -45,7 +65,8 @@ const populate = (newData) => {
     newData = api.getLocalData();
   }
 
-  $("tbody").innerHTML = "";
+  // console.log(newData);
+  $("tbody").empty();
   // console.log(newData);
 
   newData.sort(selectedFields);
@@ -66,18 +87,24 @@ const populate = (newData) => {
 };
 
 async function refreshTables() {
-  populate(await api.sync());
+  try {
+    populate(await api.sync());
+  } catch (e) {
+    alert(
+      "[Error] Unable to fetch data from the server! Using the cached data"
+    );
+    populate(api.getLocalData());
+  }
 }
 
 $(document).ready(() => {
   data = api.getLocalData();
   populate(data);
-
   refreshTables();
 
-  setInterval(() => {
-    refreshTables();
-  }, 30000);
+  // setInterval(() => {
+  //   refreshTables();
+  // }, 30000);
 });
 
 // ==============  Employee Record Tag Generation ==============
@@ -118,22 +145,17 @@ const generateEmpTag = (emp) => {
 };
 
 // ==============  Submit Button Handler ==============
-$("#add-emp").click(async (e) => {
-  if ($("#add-emp").hasClass("d-none")) {
-    $("#update-emp").click();
+$("#add-emp").click(async function () {
+  if ($(this).attr("id") != "add-emp") {
+    $(this).attr("id").click();
     return;
   }
-  let emp = new Employee(...getInputField());
-
-  console.log(emp.name, emp.job, emp.salary);
-
-  if (!(emp.name && emp.job && emp.salary)) {
-    alert("Missing field!");
+  let [isEmpty, emp] = getEmpData();
+  if (isEmpty) {
     return;
   }
 
-  emp = await api.post(emp);
-  // console.log(emp);
+  emp = await api.post(emp.toObj());
   setInputField();
   refreshTables();
 });
@@ -141,11 +163,21 @@ $("#add-emp").click(async (e) => {
 // ============== get input field data ==============
 function getInputField() {
   return [
-    $("#name").val(),
-    $("#job").val(),
-    $("#salary").val(),
-    $("#empID").val(),
+    $("#name").val().trim(),
+    $("#job").val().trim(),
+    $("#salary").val().trim(),
+    $("#empID").val().trim(),
   ];
+}
+
+function getEmpData() {
+  let emp = new Employee(...getInputField());
+
+  if (!(emp.name && emp.job && emp.salary)) {
+    alert("Missing field!");
+    return [true, emp];
+  }
+  return [false, emp];
 }
 
 // ============== set input field data ==============
@@ -174,32 +206,36 @@ function setInputField(name, job, salary, id, isUpdate) {
 
 // ============== Update Button Handler ==============
 
-$("#update-emp").click(async () => {
-  if ($("#update-emp").hasClass("d-none")) {
+$("#update-emp").click(async function () {
+  if ($(this).attr("id") != "update-emp") {
+    $(this).attr("id").click();
     return;
   }
 
-  let emp = new Employee(...getInputField());
-
-  if (!(emp.name && emp.job && emp.salary)) {
-    alert("Missing field!");
+  let [isEmpty, emp] = getEmpData();
+  if (isEmpty) {
     return;
   }
 
-  emp = await api.put(emp);
+  emp = await api.put(emp.toObj());
   // console.log(emp.id, "is removed!");
   $(`#${emp.id}`).remove();
   setInputField();
   refreshTables();
 });
 
+// ============== Sort Buttons Handler ==============
 $(".btn-sort").click(function () {
   if ($(this).hasClass("btn-success")) {
     $(this).removeClass("btn-success");
     $(this).addClass("btn-dark");
     sortKey = "id";
     isAscOrder = "asc";
-    refreshTables();
+    if (searchResult.length > 0) {
+      populate(searchResult);
+    } else {
+      refreshTables();
+    }
     return;
   }
   sortKey = $(this).attr("name");
@@ -208,5 +244,46 @@ $(".btn-sort").click(function () {
   $(".btn-sort").addClass("btn-dark");
   $(this).addClass("btn-success");
   $(this).removeClass("btn-dark");
+  if (searchResult.length > 0) {
+    populate(searchResult);
+    return;
+  }
   refreshTables();
+});
+
+// ============== Search Button Handler ==============
+
+$("#search-emp").click(async () => {
+  $("#clear-emp").toggleClass("d-none");
+  let [isEmpty, emp] = getEmpData();
+  if (isEmpty) {
+    return;
+  }
+  let data;
+  searchResult = [];
+
+  try {
+    data = await api.sync();
+  } catch (e) {
+    data = api.getLocalData();
+  }
+  for (let i = 0; i < data.length; i++) {
+    if (emp.equals(data[i])) {
+      searchResult.push(data[i]);
+    }
+  }
+  if (!searchResult) {
+    alert("[Error] Can't find the Employee");
+    return;
+  }
+  populate(searchResult);
+});
+
+// ============== Clear Button Handler ==============
+
+$("#clear-emp").click(async function () {
+  setTimeout(setInputField, 300);
+  searchResult = [];
+  refreshTables();
+  $(this).toggleClass("d-none");
 });

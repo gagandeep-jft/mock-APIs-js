@@ -43,10 +43,11 @@ function EmployeesAPI() {
   this.get = (id) => {
     return $.getJSON(`${API_URL}/${id}`, {}, this.sync);
   };
+  
   this.sync = () => {
     return $.getJSON(API_URL, {}, (result) => {
       if (result);
-      console.log("updated")
+      // console.log("updated")
       this.saveLocalData(result);
     });
   };

@@ -1,67 +1,54 @@
-const delay = 2000; // 2s
+const API_URL = "http://localhost:3000/data";
 
-function Employees() {
-  this.employees = [];
-  this.globalCounter = 0;
+function EmployeesAPI() {
+  this.saveLocalData = (data) => {
+    if (data) localStorage.setItem("data", JSON.stringify(data));
+  };
+
+  this.getLocalData = () => {
+    return localStorage.getItem("data")
+      ? JSON.parse(localStorage.getItem("data"))
+      : [];
+  };
 
   this.post = (emp) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        emp.id = this.globalCounter++;
-        this.employees.push(emp);
-        resolve(emp.id);
-      }, delay);
-    });
+    return $.post(
+      API_URL,
+      emp,
+      (emp) => {
+        this.sync();
+      },
+      "json"
+    );
   };
 
   this.put = (emp) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        for (let i = 0; i < this.employees.length; i++) {
-          // console.log(this.employees[i].id, emp.id);
-          if (this.employees[i].id == emp.id) {
-            this.employees[i] = emp;
-            console.log("found and replaced");
-            break;
-          }
-        }
-        resolve();
-      }, delay);
+    return $.ajax({
+      url: `${API_URL}/${emp.id}`,
+      type: "PUT",
+      data: emp,
+      success: this.sync,
     });
   };
 
   this.delete = (id) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let index = -1;
-        for (let i = 0; i < this.employees.length; i++) {
-          if (this.employees[i].id == id) {
-            index = i;
-            break;
-          }
-        }
-        if (index != -1) {
-          this.employees.splice(index, 1);
-          console.log("found and deleted employee");
-        }
-        resolve(id);
-      }, delay);
+    return $.ajax({
+      url: `${API_URL}/${id}`,
+      type: "DELETE",
+      success: this.sync,
+      error: this.sync,
     });
   };
 
   this.get = (id) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let result;
-
-        for (let i = 0; i < this.employees.length; i++) {
-          if (id == this.employees[i].id) {
-            result = this.employees[i];
-            break;
-          }
-        }
-        resolve(result);
-      }, delay);
+    return $.getJSON(`${API_URL}/${id}`, {}, this.sync);
+  };
+  
+  this.sync = () => {
+    return $.getJSON(API_URL, {}, (result) => {
+      if (result);
+      // console.log("updated")
+      this.saveLocalData(result);
     });
   };
 }

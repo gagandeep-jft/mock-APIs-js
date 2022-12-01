@@ -1,5 +1,27 @@
 let tbody = document.querySelector("tbody");
-let api = new Employees();
+let api = new EmployeesAPI();
+
+// for sorting rows
+let sortKey = "id";
+let isAscOrder = true;
+
+// for search
+let searchResult = [];
+
+let mapSortFunc = {
+  name: (obj, obj2) => {
+    return getSortKey(obj.name.toLowerCase(), obj2.name.toLowerCase());
+  },
+  job: (obj, obj2) => {
+    return getSortKey(obj.job.toLowerCase(), obj2.job.toLowerCase());
+  },
+  salary: (obj, obj2) => {
+    return getSortKey(parseInt(obj.salary), parseInt(obj2.salary));
+  },
+  id: (obj, obj2) => {
+    return getSortKey(parseInt(obj.id), parseInt(obj2.id));
+  }, // default
+};
 
 class Employee {
   constructor(empName, empJob, empSalary, id) {
@@ -7,165 +29,261 @@ class Employee {
     this.job = empJob;
     this.salary = empSalary;
     this.id = id;
+    this.equals = (other) => {
+      console.log(this, other);
+      for (let key in this) {
+        if (["id", "equals", "toObj"].includes(key)) {
+          continue;
+        }
+        if (this[key] != other[key]) {
+          // console.log(this[key])
+          // console.log(other[key]);
+          return false;
+        }
+      }
+      return true;
+    };
+    this.toObj = () => {
+      return JSON.parse(JSON.stringify(this));
+    };
   }
 }
 
-// ==============  Employee Record Tag Generation ==============
-const generateEmpTag = (empName, empJob, empSalary, id) => {
-  let tr = document.createElement("tr");
-  tr.id = id;
-  let name = document.createElement("td");
-  name.innerHTML = empName;
-
-  let job = document.createElement("td");
-  job.innerHTML = empJob;
-
-  let salary = document.createElement("td");
-  salary.innerHTML = empSalary;
-
-  tr.appendChild(name);
-  tr.appendChild(job);
-  tr.appendChild(salary);
-
-  let buttons = document.createElement("td");
-  let editBtn = document.createElement("button");
-  editBtn.className = "edit-btn btn btn-primary mx-2";
-  editBtn.innerHTML = "Edit";
-  editBtn.id = `edit-btn-${id}`;
-
-  // event listener for edit button
-  editBtn.addEventListener("click", () => {
-    api
-      .get(id)
-      .then((obj) =>
-        setInputField(obj.name, obj.job, obj.salary, obj.id, true)
-      );
-  });
-
-  let deleteBtn = document.createElement("button");
-  deleteBtn.className = "delete-btn btn btn-danger";
-  deleteBtn.innerHTML = "Delete";
-  deleteBtn.id = `delete-btn-${id}`;
-
-  deleteBtn.addEventListener("click", () => {
-    deleteEmp(id);
-  });
-
-  buttons.appendChild(editBtn);
-  buttons.appendChild(deleteBtn);
-
-  tr.appendChild(buttons);
-
-  return tr;
+const getSortKey = (ele1, ele2) => {
+  if (ele1 < ele2) return -1;
+  else if (ele1 > ele2) return 1;
+  return 0;
 };
 
-//  ============== Render Employee ==============
-function addToTable(tag) {
-  tbody.appendChild(tag);
+const selectedFields = (a, b) => {
+  if (isAscOrder) return mapSortFunc[sortKey](a, b);
+  return mapSortFunc[sortKey](b, a);
+};
+
+const populate = (newData) => {
+  if (!newData) {
+    newData = api.getLocalData();
+  }
+
+  // console.log(newData);
+  $("tbody").empty();
+  // console.log(newData);
+
+  newData.sort(selectedFields);
+  // console.log(newData);
+
+  newData.forEach((emp) => {
+    // check if element already exists,
+    // if not, then add
+    // else, remove them
+    if ($(`#${emp.id}`).length <= 1) {
+      $(`#${emp.id}`).remove();
+      $(`#${emp.id}`).remove();
+      generateEmpTag(emp);
+    } else {
+      $(`#${emp.id}`).remove();
+    }
+  });
+};
+
+async function refreshTables() {
+  try {
+    populate(await api.sync());
+  } catch (e) {
+    alert(
+      "[Error] Unable to fetch data from the server! Using the cached data"
+    );
+    populate(api.getLocalData());
+  }
 }
 
+$(document).ready(() => {
+  data = api.getLocalData();
+  populate(data);
+  refreshTables();
+
+  // setInterval(() => {
+  //   refreshTables();
+  // }, 30000);
+});
+
+// ==============  Employee Record Tag Generation ==============
+const generateEmpTag = (emp) => {
+  // console.log(emp)
+  let tr = $(`<tr id="${emp.id}">
+    <td>${emp.name}</td>
+    <td>${emp.job}</td>
+    <td>${emp.salary}</td>
+    <td>
+      <button
+        class="edit-btn btn btn-primary mx-2"
+        id="edit-btn-${emp.id}">
+        Edit
+      </button>
+      
+      <button
+        class="delete-btn btn btn-danger"
+        id="delete-btn-${emp.id}">
+        Delete
+      </button>
+    </td>
+  </tr>`);
+
+  $("tbody").append(tr);
+
+  // event listener for edit button
+  $(`#edit-btn-${emp.id}`).click(async () => {
+    let obj = await api.get(emp.id);
+    setInputField(obj.name, obj.job, obj.salary, obj.id, true);
+  });
+
+  $(`#delete-btn-${emp.id}`).click(async () => {
+    await api.delete(emp.id);
+    $(`#${emp.id}`).remove();
+    refreshTables();
+  });
+};
+
 // ==============  Submit Button Handler ==============
-document.getElementById("add-emp").addEventListener("click", async () => {
-  if (document.getElementById("add-emp").classList.contains("d-none")) {
+$("#add-emp").click(async function () {
+  if ($(this).attr("id") != "add-emp") {
+    $(this).attr("id").click();
     return;
   }
-  let [name, job, salary, ,] = getInputField();
-
-  console.log(name, job, salary);
-
-  if (!(name && job && salary)) {
-    alert("Missing field!");
+  let [isEmpty, emp] = getEmpData();
+  if (isEmpty) {
     return;
   }
 
-  let emp = new Employee(name, job, salary);
-
-  let id = await api.post(emp);
-  addToTable(generateEmpTag(name, job, salary, id));
+  emp = await api.post(emp.toObj());
   setInputField();
+  refreshTables();
 });
 
 // ============== get input field data ==============
 function getInputField() {
-  let name = document.getElementById("name").value;
-  let job = document.getElementById("job").value;
-  let salary = document.getElementById("salary").value;
-  let id = document.getElementById("empID").value;
-  return [name, job, salary, id];
+  return [
+    $("#name").val().trim(),
+    $("#job").val().trim(),
+    $("#salary").val().trim(),
+    $("#empID").val().trim(),
+  ];
+}
+
+function getEmpData() {
+  let emp = new Employee(...getInputField());
+
+  if (!(emp.name && emp.job && emp.salary)) {
+    alert("Missing field!");
+    return [true, emp];
+  }
+  return [false, emp];
 }
 
 // ============== set input field data ==============
-function setInputField(name, job, salary, id, updateEmp) {
-  document.getElementById("name").value = name ?? "";
-  document.getElementById("job").value = job ?? "";
-  document.getElementById("salary").value = salary ?? "";
+function setInputField(name, job, salary, id, isUpdate) {
+  $("#name").val(name ?? "");
+  $("#job").val(job ?? "");
+  $("#salary").val(salary ?? "");
 
-  document.getElementById("empID").value = id ?? "";
-  //   console.log(id);
+  $("#empID").val(id ?? "");
 
-  let submitBtn = document.getElementById("add-emp");
-  let updateBtn = document.getElementById("update-emp");
+  let submitBtn = $("#add-emp");
+  let updateBtn = $("#update-emp");
 
-  if (updateEmp) {
-    submitBtn.classList.add("d-none");
-    updateBtn.classList.remove("d-none");
+  if (isUpdate) {
+    submitBtn.addClass("d-none");
+    updateBtn.removeClass("d-none");
   } else {
-    if (submitBtn.classList.contains("d-none")) {
-      submitBtn.classList.remove("d-none");
+    if (submitBtn.hasClass("d-none")) {
+      submitBtn.removeClass("d-none");
     }
-    if (!updateBtn.classList.contains("d-none")) {
-      updateBtn.classList.add("d-none");
-    }
-  }
-}
-
-function removeFromTable(id) {
-  let tags = [...tbody.children];
-  for (let i = 0; i < tags.length; i++) {
-    if (tags[i].id == id) {
-      console.log("found and removed");
-      tbody.removeChild(tags[i]);
-      break;
+    if (!updateBtn.hasClass("d-none")) {
+      updateBtn.addClass("d-none");
     }
   }
 }
 
 // ============== Update Button Handler ==============
 
-document.getElementById("update-emp").addEventListener("click", async () => {
-  if (document.getElementById("update-emp").classList.contains("d-none")) {
+$("#update-emp").click(async function () {
+  if ($(this).attr("id") != "update-emp") {
+    $(this).attr("id").click();
     return;
   }
 
-  let [name, job, salary, id] = getInputField();
-
-  if (!(name && job && salary)) {
-    alert("Missing field!");
+  let [isEmpty, emp] = getEmpData();
+  if (isEmpty) {
     return;
   }
 
-  let emp = new Employee(name, job, salary, id);
-
-  await api.put(emp);
-  removeFromTable(id);
+  emp = await api.put(emp.toObj());
+  // console.log(emp.id, "is removed!");
+  $(`#${emp.id}`).remove();
   setInputField();
-  tbody.appendChild(generateEmpTag(name, job, salary, id));
+  refreshTables();
 });
 
-async function deleteEmp(id) {
-  await api.delete(id);
-  let tr = document.getElementById(id);
-  tbody.removeChild(tr);
-}
+// ============== Sort Buttons Handler ==============
+$(".btn-sort").click(function () {
+  if ($(this).hasClass("btn-success")) {
+    $(this).removeClass("btn-success");
+    $(this).addClass("btn-dark");
+    sortKey = "id";
+    isAscOrder = "asc";
+    if (searchResult.length > 0) {
+      populate(searchResult);
+    } else {
+      refreshTables();
+    }
+    return;
+  }
+  sortKey = $(this).attr("name");
+  isAscOrder = $(this).val() == "asc";
+  $(".btn-sort").removeClass("btn-success");
+  $(".btn-sort").addClass("btn-dark");
+  $(this).addClass("btn-success");
+  $(this).removeClass("btn-dark");
+  if (searchResult.length > 0) {
+    populate(searchResult);
+    return;
+  }
+  refreshTables();
+});
 
-// let emp = new Employee("Gagan", "SWE Trainee", "5LPA");
-// emp.add();
+// ============== Search Button Handler ==============
 
-// let emp2 = new Employee("Vishal", "SWE Trainee", "5LPA");
-// emp2.add();
+$("#search-emp").click(async () => {
+  $("#clear-emp").toggleClass("d-none");
+  let [isEmpty, emp] = getEmpData();
+  if (isEmpty) {
+    return;
+  }
+  let data;
+  searchResult = [];
 
-// let emp3 = new Employee("Khusboo", "SWE Trainee", "5LPA");
-// emp3.add();
+  try {
+    data = await api.sync();
+  } catch (e) {
+    data = api.getLocalData();
+  }
+  for (let i = 0; i < data.length; i++) {
+    if (emp.equals(data[i])) {
+      searchResult.push(data[i]);
+    }
+  }
+  if (!searchResult) {
+    alert("[Error] Can't find the Employee");
+    return;
+  }
+  populate(searchResult);
+});
 
-// let emp4 = new Employee("Haren", "SWE Trainee", "5LPA");
-// emp4.add();
+// ============== Clear Button Handler ==============
+
+$("#clear-emp").click(async function () {
+  setTimeout(setInputField, 300);
+  searchResult = [];
+  refreshTables();
+  $(this).toggleClass("d-none");
+});

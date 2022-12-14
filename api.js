@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:3000/data";
+const API_URL = "http://localhost:6969/data";
 
 function EmployeesAPI() {
   this.saveLocalData = (data) => {
@@ -14,7 +14,7 @@ function EmployeesAPI() {
   this.post = (emp) => {
     return $.post(
       API_URL,
-      emp,
+      JSON.stringify(emp),
       (emp) => {
         this.sync();
       },
@@ -26,7 +26,7 @@ function EmployeesAPI() {
     return $.ajax({
       url: `${API_URL}/${emp.id}`,
       type: "PUT",
-      data: emp,
+      data: JSON.stringify(emp),
       success: this.sync,
     });
   };

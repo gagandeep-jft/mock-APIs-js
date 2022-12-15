@@ -90,18 +90,24 @@ async function refreshTables() {
   try {
     populate(await api.sync());
   } catch (e) {
-    alert(
-      "[Error] Unable to fetch data from the server! Using the cached data"
-    );
+    if (e.status === 401 || e.status == 403) {
+      window.location.href = "/login.html";
+      return;
+    }
+    // alert(JSON.stringify(e));
     populate(api.getLocalData());
   }
 }
 
 $(document).ready(() => {
-  data = api.getLocalData();
-  populate(data);
-  refreshTables();
-
+  if (
+    window.location.pathname == "/" ||
+    window.location.pathname == "/index.html"
+  ) {
+    data = api.getLocalData();
+    populate(data);
+    refreshTables();
+  }
   // setInterval(() => {
   //   refreshTables();
   // }, 30000);
@@ -216,7 +222,6 @@ $("#update-emp").click(async function () {
   if (isEmpty) {
     return;
   }
-
   emp = await api.put(emp.toObj());
   // console.log(emp.id, "is removed!");
   $(`#${emp.id}`).remove();
@@ -286,4 +291,40 @@ $("#clear-emp").click(async function () {
   searchResult = [];
   refreshTables();
   $(this).toggleClass("d-none");
+});
+
+// ============== Login Handler ==============
+
+$("#login-btn").click(async function () {
+  let email = $("#email").val();
+  let password = $("#password").val();
+  let rememberMe = $("#rememberMe").is(":checked");
+  try {
+    await api.auth(email, password, rememberMe);
+    console.log(api.getAccessToken());
+    location.replace("/");
+    $("#form-error-message").addClass("d-none");
+  } catch (e) {
+    if (e.status === 401) {
+      $("#form-error-message").removeClass("d-none");
+    } else {
+      $("#form-error-message").html(
+        "Something went wrong, please try again later"
+      );
+      $("#form-error-message").removeClass("d-none");
+    }
+  }
+});
+
+// ============== Logout Button Handler =================
+
+$("#logout-btn").click(async () => {
+  await api.unAuth();
+  location.replace("/");
+});
+
+// ============== Submission Handler =================
+
+$("#emp-form").submit(async (e) => {
+  e.preventDefault();
 });

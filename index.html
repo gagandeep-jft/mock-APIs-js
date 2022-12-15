@@ -24,13 +24,15 @@
   </head>
   <body>
     <div class="container">
+      <div class="navbar-nav">
+        <a id="logout-btn" class="btn btn-link d-block align-self-end">Logout</a>
+      </div>
       <div class="heading my-5">
         <h1 class="text-center">Employee Management</h1>
       </div>
-
       <div class="">
         <div class="">
-          <form class="form" onsubmit="return false;">
+          <form id="emp-form" class="form" onsubmit="return false;">
             <div class="form-group">
               <label for="name">Name: </label>
               <input
@@ -65,12 +67,20 @@
               <button class="btn btn-success" id="add-emp" type="submit">
                 Submit
               </button>
-              <button class="btn btn-outline-primary" id="search-emp" type="submit">
-              🔎 Search
+              <button
+                class="btn btn-outline-primary"
+                id="search-emp"
+                type="submit"
+              >
+                🔎 Search
               </button>
-              <button class="btn btn-outline-primary d-none" id="clear-emp" type="submit">
+              <button
+                class="btn btn-outline-primary d-none"
+                id="clear-emp"
+                type="submit"
+              >
                 ❌ Clear
-                </button>
+              </button>
               <button
                 class="btn btn-primary d-none"
                 id="update-emp"
